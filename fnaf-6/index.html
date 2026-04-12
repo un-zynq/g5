@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+        />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <style>
+            body {
+                margin: 0;
+                background: #000;
+                overflow: hidden;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                width: 100vw;
+            }
+            #MMFCanvas {
+                width: 100vw;
+                height: 100vh;
+                object-fit: contain;
+                display: block;
+                opacity: 0;
+                transition: opacity 0.8s;
+            }
+            #ui {
+                position: absolute;
+                width: 200px;
+                z-index: 99;
+                transition: opacity 0.5s;
+            }
+            #loader {
+                width: 100%;
+                height: 2px;
+                background: #222;
+                overflow: hidden;
+            }
+            #bar {
+                height: 100%;
+                width: 0%;
+                background: #fff;
+                transition: width 0.2s ease-out;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="ui">
+            <div id="loader"><div id="bar"></div></div>
+        </div>
+        <canvas id="MMFCanvas" width="1280" height="720"></canvas>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+        <script>
+            (function () {
+                const r = "resources/Fnafps.cch",
+                    p = 19,
+                    m = new Map(),
+                    b = document.getElementById("bar"),
+                    cv = document.getElementById("MMFCanvas"),
+                    f = window.fetch;
+                function u(v) {
+                    b.style.width = v + "%";
+                }
+                function gD(o, p) {
+                    while (o) {
+                        const d = Object.getOwnPropertyDescriptor(o, p);
+                        if (d) return d;
+                        o = Object.getPrototypeOf(o);
+                    }
+                    return null;
+                }
+                async function it() {
+                    window.fetch = async (i, n) =>
+                        typeof i === "string" && i.startsWith("resources/")
+                            ? f(m.get(i.split("/").pop()) || i, n)
+                            : f(i, n);
+                    const o = XMLHttpRequest.prototype.open;
+                    XMLHttpRequest.prototype.open = function (mth, url) {
+                        if (url && url.startsWith("resources/"))
+                            url = m.get(url.split("/").pop()) || url;
+                        return o.apply(this, arguments);
+                    };
+                    [
+                        HTMLImageElement,
+                        HTMLAudioElement,
+                        HTMLVideoElement,
+                    ].forEach((T) => {
+                        const d = gD(T.prototype, "src");
+                        if (d && d.set) {
+                            Object.defineProperty(T.prototype, "src", {
+                                configurable: !0,
+                                get: d.get,
+                                set: function (v) {
+                                    if (
+                                        typeof v === "string" &&
+                                        v.startsWith("resources/")
+                                    )
+                                        v = m.get(v.split("/").pop()) || v;
+                                    d.set.call(this, v);
+                                },
+                            });
+                        }
+                    });
+                }
+                async function start() {
+                    try {
+                        let bufs = [],
+                            tS = 0,
+                            lS = 0;
+                        const pts = Array.from(
+                            { length: p },
+                            (_, i) => `resources.zip.part${i + 1}`,
+                        );
+                        const szs = await Promise.all(
+                            pts.map((p) =>
+                                f(p, { method: "HEAD" }).then((r) =>
+                                    parseInt(
+                                        r.headers.get("Content-Length") || 0,
+                                    ),
+                                ),
+                            ),
+                        );
+                        tS = szs.reduce((a, b) => a + b, 0);
+                        for (let i = 0; i < pts.length; i++) {
+                            const r = await f(pts[i]),
+                                d = await r.arrayBuffer();
+                            bufs.push(d);
+                            lS += d.byteLength;
+                            u(Math.floor((lS / tS) * 50));
+                        }
+                        const z = await JSZip.loadAsync(new Blob(bufs)),
+                            ks = Object.keys(z.files).filter(
+                                (k) => !z.files[k].dir,
+                            ),
+                            nK = ks.length;
+                        for (let i = 0; i < nK; i++) {
+                            const fl = z.files[ks[i]],
+                                bl = await fl.async("blob");
+                            m.set(ks[i], URL.createObjectURL(bl));
+                            u(50 + Math.floor(((i + 1) / nK) * 50));
+                        }
+                        await it();
+                        u(100);
+                        setTimeout(() => {
+                            const s = document.createElement("script");
+                            s.src = "Runtime.js";
+                            s.onload = () => {
+                                new Runtime("MMFCanvas", r);
+                                cv.style.opacity = "1";
+                                document.getElementById("ui").style.opacity =
+                                    "0";
+                                setTimeout(
+                                    () =>
+                                        document.getElementById("ui").remove(),
+                                    500,
+                                );
+                            };
+                            document.head.appendChild(s);
+                        }, 2000);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+                start();
+            })();
+        </script>
+    </body>
+</html>
