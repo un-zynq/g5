@@ -1,112 +1,99 @@
 <!DOCTYPE html>
-<html lang="en-us">
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    
-    
-    <link rel="stylesheet" href="TemplateData/style.css">
-  </head>
-  <body>
-    <div id="unity-container" class="unity-desktop">
-      <canvas id="unity-canvas" width=100 height=100></canvas>
-      <div id="unity-loading-bar">
-        <div id="unity-logo"></div>
-        <div id="unity-progress-bar-empty">
-          <div id="unity-progress-bar-full"></div>
-        </div>
-      </div>
-      <div id="unity-warning"> </div>
-      <div id="unity-footer">
-        <div id="unity-webgl-logo"></div>
-        <div id="unity-fullscreen-button"></div>
-        <div id="unity-build-title">Backrooms 2D</div>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+  <title>Backrooms 2D</title>
+  <style>body,html{margin:0;padding:0;width:100%;height:100%;background:#000;overflow:hidden;touch-action:none}#c{width:100vw;height:100vh;position:relative;display:flex;align-items:center;justify-content:center}canvas{width:100%;height:100%;display:block;outline:none}#l{position:absolute;top:0;left:0;width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;z-index:99;transition:opacity .8s}#r{width:200px;height:2px;background:rgba(255,255,255,.05);border-radius:2px;overflow:hidden}#f{width:0%;height:100%;background:#fff;box-shadow:0 0 10px #fff;transition:width .3s}#unity-warning{display:none!important}</style>
+</head>
+<body>
+  <div id="c">
+    <canvas id="cvs"></canvas>
+    <div id="l">
+      <div id="r">
+        <div id="f"></div>
       </div>
     </div>
-    <script>
-      var container = document.querySelector("#unity-container");
-      var canvas = document.querySelector("#unity-canvas");
-      var loadingBar = document.querySelector("#unity-loading-bar");
-      var progressBarFull = document.querySelector("#unity-progress-bar-full");
-      var fullscreenButton = document.querySelector("#unity-fullscreen-button");
-      var warningBanner = document.querySelector("#unity-warning");
-      // Shows a temporary message banner/ribbon for a few seconds, or
-      // a permanent error message on top of the canvas if type=='error'.
-      // If type=='warning', a yellow highlight color is used.
-      // Modify or remove this function to customize the visually presented
-      // way that non-critical warnings and error messages are presented to the
-      // user.
-      function unityShowBanner(msg, type) {
-        function updateBannerVisibility() {
-          warningBanner.style.display = warningBanner.children.length ? 'block' : 'none';
-        }
-        var div = document.createElement('div');
-        div.innerHTML = msg;
-        warningBanner.appendChild(div);
-        if (type == 'error') div.style = 'background: red; padding: 10px;';
-        else {
-          if (type == 'warning') div.style = 'background: yellow; padding: 10px;';
-          setTimeout(function() {
-            warningBanner.removeChild(div);
-            updateBannerVisibility();
-          }, 5000);
-        }
-        updateBannerVisibility();
-      }
-      var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/2-4-23.loader.js";
-      var config = {
-        dataUrl: buildUrl + "/2-4-23.data",
-        frameworkUrl: buildUrl + "/2-4-23.framework.js",
-        codeUrl: buildUrl + "/2-4-23.wasm",
-        streamingAssetsUrl: "StreamingAssets",
-        companyName: "JujuProdGames",
-        productName: "Backrooms 2D",
-        productVersion: "0.2",
-        showBanner: unityShowBanner,
-      };
-      // By default Unity keeps WebGL canvas render target size matched with
-      // the DOM size of the canvas element (scaled by window.devicePixelRatio)
-      // Set this to false if you want to decouple this synchronization from
-      // happening inside the engine, and you would instead like to size up
-      // the canvas DOM size and WebGL render target sizes yourself.
-      // config.matchWebGLToCanvasSize = false;
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-        container.className = "unity-mobile";
-        // To lower canvas resolution on mobile devices to gain some
-        // performance, uncomment the following line:
-        // config.devicePixelRatio = 1;
-        canvas.style.width = window.innerWidth + '%';
-        canvas.style.height = window.innerHeight + '%';
-        unityShowBanner('WebGL builds are not supported on mobile devices.');
-      } else {
-        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-      }
-      canvas.style.background = "url('" + buildUrl + "/2-4-23.jpg') center / cover";
-      loadingBar.style.display = "block";
-      var script = document.createElement("script");
-      script.src = loaderUrl;
-      script.onload = () => {
-        createUnityInstance(canvas, config, (progress) => {
-          progressBarFull.style.width = 100 * progress + "%";
-        }).then((unityInstance) => {
-          loadingBar.style.display = "none";
-          fullscreenButton.onclick = () => {
-            unityInstance.SetFullscreen(1);
-          };
-        }).catch((message) => {
-          alert(message);
-        });
-      };
-      document.body.appendChild(script);
-    </script>
-  </body>
-</html>
+  </div>
+  <script>
+    (function() {
+      const el = id => document.getElementById(id);
+      const fill = el("f"), loader = el("l"), canvas = el("cvs");
+      const base = "https://cdn.jsdelivr.net/gh/un-zynq/g5/backrooms-2d/sfBuild/7-21-23";
 
+      async function fetchGameData(ext, parts) {
+        let chunks = [];
+        for (let i = 1; i <= parts; i++) {
+          const r = await fetch(`${base}.${ext}.part${i}`, { priority: "high" });
+          if (!r.ok) throw 0;
+          chunks.push(await r.blob());
+        }
+        const blob = new Blob(chunks);
+        chunks = null;
+        return URL.createObjectURL(blob);
+      }
+
+      async function start() {
+        try {
+          const [dUrl, wUrl] = await Promise.all([
+            fetchGameData("data", 4),
+            fetchGameData("wasm", 4)
+          ]);
+
+          fill.style.width = "40%";
+
+          const config = {
+            dataUrl: dUrl,
+            frameworkUrl: base + ".framework.js",
+            codeUrl: wUrl,
+            streamingAssetsUrl: "StreamingAssets",
+            companyName: "JujuProdGames",
+            productName: "Backrooms 2D",
+            devicePixelRatio: 1,
+            matchWebGLToCanvasSize: true,
+            cacheControl: () => "no-cache",
+            indexedDB: null,
+            webglContextAttributes: {
+              alpha: false,
+              depth: true,
+              stencil: false,
+              antialias: false,
+              premultipliedAlpha: false,
+              preserveDrawingBuffer: false,
+              powerPreference: "high-performance",
+              failIfMajorPerformanceCaveat: false
+            }
+          };
+
+          const s = document.createElement("script");
+          s.src = base + "-loader.js";
+          s.onload = () => {
+            createUnityInstance(canvas, config, (p) => {
+              fill.style.width = (40 + (p * 60)) + "%";
+            }).then((ui) => {
+              fill.style.width = "100%";
+              setTimeout(() => {
+                loader.style.opacity = "0";
+                setTimeout(() => {
+                  loader.remove();
+                  URL.revokeObjectURL(dUrl);
+                  URL.revokeObjectURL(wUrl);
+                }, 800);
+              }, 400);
+            }).catch(err => {
+              location.reload();
+            });
+          };
+          document.body.appendChild(s);
+        } catch (e) {}
+      }
+
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(() => start());
+      } else {
+        window.addEventListener('load', start);
+      }
+    })();
+  </script>
+</body>
+</html>
