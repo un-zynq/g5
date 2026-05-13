@@ -461,6 +461,10 @@
       }
     };
     run().catch(handleError);
+
+	/* OPTIONAL: Remove control buttons */
+	(()=>document.querySelectorAll('.control-button').forEach(e=>e.remove()))();
+	
   </script>
 </body>
 </html>
